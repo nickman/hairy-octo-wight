@@ -27,7 +27,11 @@ package org.helios.octo.server;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
@@ -43,6 +47,7 @@ import javax.management.ObjectName;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
+import org.helios.octo.server.io.SystemStreamRedirector;
 
 /**
  * <p>Title: OctoServer</p>
@@ -75,6 +80,8 @@ public class OctoServer implements OctoServerMBean {
 	protected EventLoopGroup bossGroup = null;
 	/** The worker event loop */
 	protected EventLoopGroup workerGroup = null;
+	/** A channel group containing all the child channels */
+	protected ChannelGroup channelGroup = null;
 	
 	/** The optimized object decoder */
 	protected ObjectDecoder objectDecoder = null;
@@ -97,8 +104,7 @@ public class OctoServer implements OctoServerMBean {
 	
 	/**
 	 * <p>Starts the OctoServer</p>
-	 * {@inheritDoc}
-	 * @see org.jboss.system.ServiceMBeanSupport#startService()
+	 * @throws Exception Thrown on any error
 	 */
 	protected void startService() throws Exception {
 		log.info("\n\t===========================================\n\tStarting OctoServer\n\t===========================================");
@@ -107,10 +113,27 @@ public class OctoServer implements OctoServerMBean {
 		log.info("Starting listener on [" + address + ":" + port + "]");
 		bossGroup = new NioEventLoopGroup();
 		workerGroup = new NioEventLoopGroup();
+		channelGroup = new DefaultChannelGroup(workerGroup.next());
 		ServerBootstrap b = new ServerBootstrap(); 
 			b.group(bossGroup, workerGroup)
 				.channel(NioServerSocketChannel.class)
 				.localAddress(new InetSocketAddress(address, port))
+				.childHandler(new ChannelHandler(){
+					@Override
+					public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+						channelGroup.add(ctx.channel());
+					}
+					@Override
+					public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+						/* No Op */
+					}
+					@Override
+					public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+						log.error("Exception caught in client pipeline", cause);
+						
+					}
+					
+				})
 				.childHandler(objectDecoder)
 				.childHandler(invocationHandler);
 			
@@ -118,20 +141,22 @@ public class OctoServer implements OctoServerMBean {
 				@Override
 				public void operationComplete(ChannelFuture f) throws Exception {
 					if(f.isSuccess()) {
-						serverChannel = (NioServerSocketChannel) f.channel();
+						serverChannel = (NioServerSocketChannel) f.channel();						
 						closeFuture = serverChannel.closeFuture();
 						log.info("Started and listening on " + serverChannel.localAddress());
+						if(!SystemStreamRedirector.isInstalledOnCurrentThread()) {
+							SystemStreamRedirector.install();
+						}
 						log.info("\n\t===========================================\n\tStarted OctoServer\n\t===========================================");
 					}					
 				}
 			});
+			
 		
 	}
 	
 	/**
 	 * <p>Stops the OctoServer</p>
-	 * {@inheritDoc}
-	 * @see org.jboss.system.ServiceMBeanSupport#stopService()
 	 */
 	protected void stopService() {
 		log.info("\n\t===========================================\n\tStopping OctoServer\n\t===========================================");
@@ -143,6 +168,10 @@ public class OctoServer implements OctoServerMBean {
 		bossGroup = null;
 		try { workerGroup.shutdownGracefully().sync(); } catch (Exception ex) {/* No Op */}
 		workerGroup = null;		
+		if(SystemStreamRedirector.isInstalledOnCurrentThread()) {
+			SystemStreamRedirector.uninstall();
+		}
+
 		log.info("\n\t===========================================\n\tStopped OctoServer\n\t===========================================");
 	}
 	

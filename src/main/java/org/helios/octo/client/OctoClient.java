@@ -27,6 +27,7 @@ package org.helios.octo.client;
 import io.netty.channel.Channel;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
@@ -50,6 +51,9 @@ public class OctoClient {
 	protected final AtomicBoolean connected = new AtomicBoolean(false);
 	/** Instance logger */
 	protected final Logger log;
+	/** Request id serial factory */
+	protected final AtomicLong requestIdFactory = new AtomicLong(0L);
+	
 	
 	/**
 	 * Creates a new OctoClient and synchronously connects
