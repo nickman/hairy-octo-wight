@@ -36,7 +36,7 @@ import org.jboss.system.ServiceMBean;
  * <p><code>org.helios.octo.server.OctoServerMBean</code></p>
  */
 
-public interface OctoServerMBean extends ServiceMBean {
+public interface OctoServerMBean  {
 	/**
 	 * Returns the listening port or -1 if the server channel is not listening
 	 * @return the listening port or -1

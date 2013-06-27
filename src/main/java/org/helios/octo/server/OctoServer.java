@@ -32,18 +32,17 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import io.netty.util.internal.logging.Log4JLoggerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 
+import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
-import org.jboss.system.ServiceMBeanSupport;
 
 /**
  * <p>Title: OctoServer</p>
@@ -53,7 +52,7 @@ import org.jboss.system.ServiceMBeanSupport;
  * <p><code>org.helios.octo.server.OctoServer</code></p>
  */
 
-public class OctoServer extends ServiceMBeanSupport implements OctoServerMBean {
+public class OctoServer implements OctoServerMBean {
 	/** The listening port */
 	protected int port = -1;
 	/** The interface to bind to */
@@ -62,6 +61,9 @@ public class OctoServer extends ServiceMBeanSupport implements OctoServerMBean {
 	protected ObjectName classLoaderRef = null;
 	/** The classloader to use for the script invocation handler */
 	protected ClassLoader classLoader = null;
+	
+	/** The MBeanServer where this server is deployed  */
+	protected MBeanServer server = null;
 	
 	/** Instance logger */
 	protected final Logger log = Logger.getLogger(getClass());
