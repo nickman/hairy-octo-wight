@@ -29,13 +29,18 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
+import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import io.netty.util.internal.logging.Log4JLoggerFactory;
 
@@ -85,6 +90,9 @@ public class OctoServer implements OctoServerMBean {
 	
 	/** The optimized object decoder */
 	protected ObjectDecoder objectDecoder = null;
+	/** Logging handler */
+	protected LoggingHandler logging = new LoggingHandler(getClass(), LogLevel.INFO);
+	
 	/** Invocation handler */
 	protected final InvocationHandler invocationHandler = new InvocationHandler();
 	
@@ -133,9 +141,18 @@ public class OctoServer implements OctoServerMBean {
 						
 					}
 					
-				})
-				.childHandler(objectDecoder)
-				.childHandler(invocationHandler);
+				}).childHandler(new ChannelInitializer<SocketChannel>() {
+					@Override
+					public void initChannel(SocketChannel ch) throws Exception {
+						ch.pipeline().addLast("logging", logging);
+						ch.pipeline().addLast("invDecoder", new InvocationDecoder());
+						ch.pipeline().addLast("objectDecoder", new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+						ch.pipeline().addLast("objectEncoder", new ObjectEncoder());
+						ch.pipeline().addLast("invHandler", invocationHandler);
+					}
+				});
+				
+				
 			
 			b.bind().addListener(new ChannelFutureListener(){
 				@Override

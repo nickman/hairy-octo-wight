@@ -24,6 +24,8 @@
  */
 package org.helios.octo.server;
 
+import java.util.Arrays;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
@@ -31,6 +33,8 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.MessageList;
 
 import org.apache.log4j.Logger;
+import org.helios.octo.server.io.SystemStreamRedirector;
+import org.helios.octo.util.NettyUtil;
 
 /**
  * <p>Title: InvocationHandler</p>
@@ -51,25 +55,56 @@ public class InvocationHandler extends ChannelInboundHandlerAdapter {
 		
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * @see io.netty.channel.ChannelInboundHandlerAdapter#channelActive(io.netty.channel.ChannelHandlerContext)
+	 */
+	@Override
+	public void channelActive(ChannelHandlerContext ctx) throws Exception {		
+		super.channelActive(ctx);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @see io.netty.channel.ChannelHandlerAdapter#exceptionCaught(io.netty.channel.ChannelHandlerContext, java.lang.Throwable)
+	 */
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		log.error("Invocation Handler caught exception:", cause);
+		super.exceptionCaught(ctx, cause);
+	}
+	
 	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageList<Object> msgs) throws Exception {
-		StringBuilder b = new StringBuilder("\n=======  Invocation ======");
+		StringBuilder b = new StringBuilder("\n======= Invocation ======");
 		int cnt = 0;
 		for(Object obj: msgs) {
 			b.append("\n\t [").append(cnt).append("] ");
 			if(obj instanceof ByteBuf) {
 				ByteBuf buff = (ByteBuf)obj;
+				log.info(NettyUtil.formatBuffer(buff));
 				byte[] bytes = new byte[buff.readableBytes()];
 				buff.readBytes(bytes);
 				b.append(new String(bytes));
 			} else {
-				b.append(obj);
+				if(obj.getClass().isArray()) {
+					b.append("[").append(Arrays.toString((Object[])obj)).append("]");
+				} else {
+					b.append("[").append(obj).append("]");
+				}
 			}
 			
 			cnt++;
 		}
 		b.append("\n=================================");
-		log.info(b);
+		SystemStreamRedirector.install();
+		SystemStreamRedirector.set(ctx.channel());
+		b.append("\n");
+		byte[] bytes = b.toString().getBytes();
+		log.info("Out Stream:" + System.out.getClass().getSimpleName());
+		System.out.write(bytes);
+		System.out.println(b);
+		System.out.flush();
 		msgs.releaseAllAndRecycle();
 	}	
 

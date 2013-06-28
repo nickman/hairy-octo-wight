@@ -24,13 +24,16 @@
  */
 package org.helios.octo.client;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
+import org.helios.octo.util.NettyUtil;
 
 /**
  * <p>Title: OctoClient</p>
@@ -82,7 +85,21 @@ public class OctoClient {
 	public static void main(String[] args) {
 		BasicConfigurator.configure();
 		OctoClient client = new OctoClient("localhost", 1093);
-
+		client.execute("Hello World", new Date());
+		try { Thread.currentThread().join(3000); } catch (Exception ex) {}
+	}
+	
+	public void execute(String s, Object...args) {
+		byte[] bytes = s.getBytes();
+		ByteBuf b = channel.alloc().directBuffer(bytes.length + 5);
+		b.writeInt(bytes.length);
+		b.writeByte((args==null||args.length==0) ? 0 : 1);
+		b.writeBytes(bytes);
+		log.info("Out:" + NettyUtil.formatBuffer(b));
+		channel.write(b);
+		if(!(args==null||args.length==0)) {
+			channel.write(args);
+		}
 	}
 
 
