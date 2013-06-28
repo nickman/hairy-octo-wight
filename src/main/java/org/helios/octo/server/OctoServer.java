@@ -36,6 +36,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.serialization.ClassResolver;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
@@ -89,7 +90,10 @@ public class OctoServer implements OctoServerMBean {
 	protected ChannelGroup channelGroup = null;
 	
 	/** The optimized object decoder */
-	protected ObjectDecoder objectDecoder = null;
+	protected ClassResolver classResolver = null;
+	/** The optimized object encoder */
+	protected ObjectEncoder objectEncoder = new ObjectEncoder();
+	
 	/** Logging handler */
 	protected LoggingHandler logging = new LoggingHandler(getClass(), LogLevel.INFO);
 	
@@ -145,9 +149,8 @@ public class OctoServer implements OctoServerMBean {
 					@Override
 					public void initChannel(SocketChannel ch) throws Exception {
 						ch.pipeline().addLast("logging", logging);
-						ch.pipeline().addLast("invDecoder", new InvocationDecoder());
-						ch.pipeline().addLast("objectDecoder", new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
-						ch.pipeline().addLast("objectEncoder", new ObjectEncoder());
+						ch.pipeline().addLast("objectDecoder", new ObjectDecoder(classResolver));
+						ch.pipeline().addLast("objectEncoder", objectEncoder);
 						ch.pipeline().addLast("invHandler", invocationHandler);
 					}
 				});
@@ -207,7 +210,7 @@ public class OctoServer implements OctoServerMBean {
 			log.error("Failed to get Classloader for Ref [" + classLoaderRef + "]", ex);
 			cl = OctoServer.class.getClassLoader();
 		}
-		objectDecoder = new ObjectDecoder(ClassResolvers.weakCachingConcurrentResolver(cl));
+		classResolver = ClassResolvers.weakCachingConcurrentResolver(cl);
 	}
 	
 	

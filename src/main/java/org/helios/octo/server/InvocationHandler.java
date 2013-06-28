@@ -64,15 +64,7 @@ public class InvocationHandler extends ChannelInboundHandlerAdapter {
 		super.channelActive(ctx);
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 * @see io.netty.channel.ChannelHandlerAdapter#exceptionCaught(io.netty.channel.ChannelHandlerContext, java.lang.Throwable)
-	 */
-	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		log.error("Invocation Handler caught exception:", cause);
-		super.exceptionCaught(ctx, cause);
-	}
+
 	
 	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageList<Object> msgs) throws Exception {

@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
+import org.helios.octo.server.invocation.InvocationRequest;
 import org.helios.octo.util.NettyUtil;
 
 /**
@@ -86,23 +87,33 @@ public class OctoClient {
 		BasicConfigurator.configure();
 		OctoClient client = new OctoClient("localhost", 1093);
 		client.execute("Hello World", new Date());
-		try { Thread.currentThread().join(3000); } catch (Exception ex) {}
+		OctoShared.getInstance().shutdownAll();
+		
+		
+		
 	}
 	
-	public void execute(String s, Object...args) {
-		byte[] bytes = s.getBytes();
-		ByteBuf b = channel.alloc().directBuffer(bytes.length + 5);
-		b.writeInt(bytes.length);
-		b.writeByte((args==null||args.length==0) ? 0 : 1);
-		b.writeBytes(bytes);
-		log.info("Out:" + NettyUtil.formatBuffer(b));
-		channel.write(b);
-		if(!(args==null||args.length==0)) {
-			channel.write(args);
-		}
+	
+	
+	/**
+	 * Creates a script execution request and sends it
+	 * @param s The script content to send
+	 * @param args The invocation arguments
+	 * @return the request id
+	 */
+	public long execute(String s, Object...args) {
+		final long rId = requestIdFactory.incrementAndGet();
+		if(s==null || s.trim().isEmpty()) throw new IllegalArgumentException("The passed script was null or empty");
+		channel.write(new InvocationRequest(s, args, rId)).syncUninterruptibly();
+		return rId;
 	}
 
-
+	/**
+	 * Closes this client
+	 */
+	public void close() {
+		this.channel.close().syncUninterruptibly();
+	}
 
 	/**
 	 * Returns the OctoServer host

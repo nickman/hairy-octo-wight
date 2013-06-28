@@ -24,6 +24,13 @@
  */
 package org.helios.octo.server.invocation;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * <p>Title: InvocationRequest</p>
  * <p>Description: Represents an invocation submitted by a remote client</p> 
@@ -32,14 +39,23 @@ package org.helios.octo.server.invocation;
  * <p><code>org.helios.octo.server.invocation.InvocationRequest</code></p>
  */
 
-public class InvocationRequest {
+public class InvocationRequest implements Externalizable {
 	/** The script text */
-	protected final String scriptText;
+	protected String scriptText;
 	/** The arguments to the script */
-	protected final Object[] arguments;
+	protected Object[] arguments;
 	/** The client supplied request id */
-	protected final long requestId;
+	protected long requestId;
 	
+	private final byte[] EMPTY_BYTES = {};
+	
+	/**
+	 * Creates a new InvocationRequest.
+	 * FOR EXTERN ONLY
+	 */
+	public InvocationRequest() {
+		
+	}
 	
 	/**
 	 * Creates a new InvocationRequest
@@ -52,6 +68,80 @@ public class InvocationRequest {
 		this.arguments = arguments;
 		this.requestId = requestId;
 	}
+
+
+	/**
+	 * {@inheritDoc}
+	 * @see java.io.Externalizable#writeExternal(java.io.ObjectOutput)
+	 */
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeLong(requestId);
+		byte[] bytes = scriptText==null ? EMPTY_BYTES : scriptText.getBytes();
+		out.writeInt(bytes.length);
+		if(bytes.length>0) {
+			out.write(bytes);
+		}
+		int argCount = arguments==null ? 0 : arguments.length;
+		out.writeInt(argCount);
+		if(argCount>0) {			
+			List<Object> validatedArgs = new ArrayList<Object>(argCount);
+			if(arguments!=null) {
+				for(int i = 0; i < argCount; i++) {
+					if(arguments[i] != null) {
+						validatedArgs.add(arguments[i]);
+						out.write(1);
+						out.writeObject(arguments[i]);
+					} else {
+						out.write(0);
+					}
+				}				
+			}
+		}
+		System.out.println("Wrote out requestId [" + requestId + "]");
+	}
+
+
+	/**
+	 * {@inheritDoc}
+	 * @see java.io.Externalizable#readExternal(java.io.ObjectInput)
+	 */
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		requestId = in.readLong();
+		int strLen = in.readInt();
+		byte[] bytes = new byte[strLen];
+		in.read(bytes);
+		scriptText = new String(bytes);
+		int argCount = in.readInt();
+		arguments = new Object[argCount];
+		for(int i = 0; i < argCount; i++) {
+			if(in.read()==1) {
+				arguments[i] = in.readObject();
+			} else {
+				arguments[i] = null;
+			}
+		}
+		System.out.println("Read in requestId [" + requestId + "]");
+	}
 	
+	
+	/**
+	 * {@inheritDoc}
+	 * @see java.lang.Object#toString()
+	 */
+	public String toString() {
+		StringBuilder b = new StringBuilder("InvocationRequest [");
+		b.append("\n\trequestId:").append(requestId);
+		b.append("\n\tScript:").append(scriptText);
+		b.append("\n\tArguments:");
+		if(arguments!=null) {
+			for(Object o: arguments) {
+				b.append("\n\t\t [").append(o).append("]");
+			}
+		}
+		b.append("\n]");
+		return b.toString();
+	}
 	
 }

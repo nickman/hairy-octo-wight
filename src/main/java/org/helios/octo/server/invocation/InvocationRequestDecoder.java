@@ -52,8 +52,7 @@ public class InvocationRequestDecoder extends ByteToMessageDecoder {
 	 */
 	@Override
 	protected void decode(ChannelHandlerContext ctx, ByteBuf in, MessageList<Object> out) throws Exception {
-
-
+		
 	}
 
 }
