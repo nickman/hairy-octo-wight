@@ -37,9 +37,14 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
+import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.handler.codec.Delimiters;
+import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.handler.codec.string.StringDecoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
 
@@ -70,7 +75,10 @@ public class OctoShared implements ThreadFactory {
 	protected final Bootstrap bootstrap;
 	/** Instance logger */
 	protected final Logger log = Logger.getLogger(getClass());
-	
+	/** logging handler */
+	protected final LoggingHandler loggingHandler = new LoggingHandler(OctoClient.class, LogLevel.INFO);
+	/** Response handler */
+	protected final ResponseHandler responseHandler = new ResponseHandler();
 	/** Indicator switched on when {@link OctoShared#shutdownAll()} is being called */
 	protected final AtomicBoolean stopping = new AtomicBoolean(false);
 	
@@ -89,6 +97,41 @@ public class OctoShared implements ThreadFactory {
 		return instance;
 	}
 	
+	/** The attribute key for the request id */
+	public static final AttributeKey<Long> REQ_ID = new AttributeKey<Long>("ReqId"); 
+	
+	/** The attribute key for the stream type */
+	public static final AttributeKey<Byte> STREAM = new AttributeKey<Byte>("StremType"); 
+	
+	
+	
+	/** The key for the response handler in the client pipeline */
+	public static final String RESPONSE_HANDLER = "responseHandler";
+	/** The key for the stream frame decoder in the client pipeline */
+	public static final String STREAM_DECODER = "streamDecoder";
+	/** The key for the object decoder in the client pipeline */
+	public static final String OBJECT_DECODER = "objectDecoder";
+	/** The key for the object encoder in the client pipeline */
+	public static final String OBJECT_ENCODER = "objectEncoder";
+	/** The key for the string decoder in the client pipeline */
+	public static final String STRING_DECODER = "stringDecoder";
+	/** The key for the string printer in the client pipeline */
+	public static final String STRING_PRINTER = "stringPrinter";
+
+	/** The key for the logging handler in the client pipeline */
+	public static final String LOGGING_HANDLER = "logging";
+	
+	protected final MessageToMessageDecoder<String> stringPrinter = new MessageToMessageDecoder<String>() {
+		protected void decode(io.netty.channel.ChannelHandlerContext ctx, String msg, io.netty.channel.MessageList<Object> out) throws Exception {
+			byte streamType = ctx.channel().attr(STREAM).get();
+			if(streamType==0) {
+				System.out.println("[out]:" + msg);
+			} else {
+				System.err.println("[err]:" + msg);
+			}
+		};
+	};
+	
 	private OctoShared() {
 		group = new NioEventLoopGroup(MultithreadEventLoopGroup.DEFAULT_EVENT_LOOP_THREADS, this);
 		channelGroup = new DefaultChannelGroup(group.next());
@@ -99,10 +142,14 @@ public class OctoShared implements ThreadFactory {
 			.handler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
-                    ch.pipeline().addLast(
-                            new ObjectEncoder(),
-                            new ObjectDecoder(ClassResolvers.cacheDisabled(null))
-                    );
+                	ch.pipeline().addLast(LOGGING_HANDLER, loggingHandler);
+                	ch.pipeline().addLast(OBJECT_ENCODER, new ObjectEncoder());
+                	ch.pipeline().addLast(RESPONSE_HANDLER, responseHandler);
+                	//ch.pipeline().addLast(STREAM_DECODER, new DelimiterBasedFrameDecoder(Integer.MAX_VALUE, Delimiters.lineDelimiter()));
+                	ch.pipeline().addLast(STRING_DECODER, new StringDecoder()); 
+                	ch.pipeline().addLast(STRING_PRINTER, stringPrinter);
+                	//ch.pipeline().addLast("decoder", new ObjectDecoder(ClassResolvers.cacheDisabled(null)));
+                	
                 }});
 		log.info("OctoShared Initialized");
 	}

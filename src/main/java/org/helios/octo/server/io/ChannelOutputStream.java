@@ -24,11 +24,14 @@
  */
 package org.helios.octo.server.io;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.MessageList;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -54,8 +57,10 @@ public class ChannelOutputStream extends OutputStream {
 	protected final PrintStream ps;
 	/** Indicates if this is std-out or std-err */
 	protected final boolean isStdOut;
-	
+	/** The chanel context of the downstream aggregator for this stream */
+	protected final ChannelHandlerContext targetCtx;
 	/** All the OUT streams */
+	
 	protected static final Map<Channel, ChannelOutputStream> OUT = new ConcurrentHashMap<Channel, ChannelOutputStream>();
 	/** All the ERR streams */
 	protected static final Map<Channel, ChannelOutputStream> ERR = new ConcurrentHashMap<Channel, ChannelOutputStream>();
@@ -95,7 +100,8 @@ public class ChannelOutputStream extends OutputStream {
 		this.channel = channel;
 		this.isStdOut = isStdOut;
 		os.set(new ByteBufOutputStream(channel.alloc().directBuffer()));
-		ps = new PrintStream(this, true);
+		ps = new PrintStream(this, false);
+		targetCtx = channel.pipeline().context((this.isStdOut ? "out" : "err"));
 	}
 	
 	/**
@@ -106,18 +112,22 @@ public class ChannelOutputStream extends OutputStream {
 		return ps;
 	}
 	
-	/**
-	 * {@inheritDoc}
-	 * @see java.io.OutputStream#flush()
-	 */
-	@Override
-	public void flush() throws IOException {
-		ByteBufOutputStream toFlush = os.getAndSet(new ByteBufOutputStream(channel.alloc().directBuffer()));		
-		// first byte for STREAM, second byte for std-err/std-out flag
-		channel.write(Unpooled.buffer(1).writeByte(0).writeByte(isStdOut ? 0 : 1));
-		channel.write(toFlush);		
-		channel.unsafe().flushNow();
-	}
+//	/**
+//	 * {@inheritDoc}
+//	 * @see java.io.OutputStream#flush()
+//	 */
+//	@Override
+//	public void flush() throws IOException {
+//		ByteBufOutputStream toFlush = os.getAndSet(new ByteBufOutputStream(channel.alloc().directBuffer()));		
+//		// first byte for STREAM, second byte for std-err/std-out flag
+//		// Prefix:
+//			// 1 long for the request id
+//			// 1 byte (0) for response type STREAM
+//			// 1 byte (0 or 1) for std-out or std-err
+//		channel.write(Unpooled.buffer(10).writeLong(System.nanoTime()).writeByte(0).writeByte(isStdOut ? 0 : 1));
+//		channel.write(toFlush);		
+//		channel.unsafe().flushNow();
+//	}
 
 	/**
 	 * {@inheritDoc}
@@ -125,7 +135,10 @@ public class ChannelOutputStream extends OutputStream {
 	 */
 	@Override
 	public void write(int b) throws IOException {
-		os.get().write(b);
+		//os.get().write(b);		
+		//targetCtx.write(MessageList.newInstance(Unpooled.buffer(1).writeByte(b)));
+		//targetCtx.write(Unpooled.buffer(1).writeByte(b));
+		channel.write(Unpooled.buffer(1).writeByte(b));
 	}
 	
 	/**
@@ -134,7 +147,10 @@ public class ChannelOutputStream extends OutputStream {
 	 */
 	@Override
 	public void write(byte[] b) throws IOException {
-		os.get().write(b);
+		//os.get().write(b);
+		//targetCtx.write(MessageList.newInstance(Unpooled.wrappedBuffer(b)));
+		//targetCtx.write(Unpooled.wrappedBuffer(b));
+		channel.write(Unpooled.wrappedBuffer(b));
 	}
 	
 	/**
@@ -143,7 +159,10 @@ public class ChannelOutputStream extends OutputStream {
 	 */
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
-		os.get().write(b, off, len);
+		//os.get().write(b, off, len);		
+		//targetCtx.write(MessageList.newInstance(Unpooled.wrappedBuffer(b, off, len)));
+		//targetCtx.write(Unpooled.wrappedBuffer(b, off, len));
+		channel.write(Unpooled.wrappedBuffer(b, off, len));
 	}
 
 

@@ -87,6 +87,8 @@ public class OctoClient {
 		BasicConfigurator.configure();
 		OctoClient client = new OctoClient("localhost", 1093);
 		client.execute("Hello World", new Date());
+		//try { Thread.currentThread().join(3000); } catch (Exception x) {}
+		try { Thread.currentThread().join(); } catch (Exception x) {}
 		OctoShared.getInstance().shutdownAll();
 		
 		

@@ -24,16 +24,17 @@
  */
 package org.helios.octo.server;
 
-import java.util.Arrays;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.MessageList;
 
+import java.io.PrintStream;
+import java.util.Arrays;
+
 import org.apache.log4j.Logger;
-import org.helios.octo.server.io.SystemStreamRedirector;
+import org.helios.octo.server.io.ChannelOutputStream;
 import org.helios.octo.util.NettyUtil;
 
 /**
@@ -89,14 +90,19 @@ public class InvocationHandler extends ChannelInboundHandlerAdapter {
 			cnt++;
 		}
 		b.append("\n=================================");
-		SystemStreamRedirector.install();
-		SystemStreamRedirector.set(ctx.channel());
+//		SystemStreamRedirector.install();
+//		SystemStreamRedirector.set(ctx.channel());
 		b.append("\n");
 		byte[] bytes = b.toString().getBytes();
-		log.info("Out Stream:" + System.out.getClass().getSimpleName());
-		System.out.write(bytes);
-		System.out.println(b);
-		System.out.flush();
+		PrintStream ps = System.out;
+		try {
+			System.setOut(ChannelOutputStream.getInstance(true, ctx.channel()).getPrintStream());
+			log.info("Out Stream:" + System.out.getClass().getSimpleName());
+			System.out.println(b);
+			System.out.flush();
+		} finally {
+			System.setOut(ps);
+		}
 		msgs.releaseAllAndRecycle();
 	}	
 

@@ -2,7 +2,7 @@
  * Helios, OpenSource Monitoring
  * Brought to you by the Helios Development Group
  *
- * Copyright 2013, Helios Development Group and individual contributors
+ * Copyright 2007, Helios Development Group and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -22,37 +22,23 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org. 
  *
  */
-package org.helios.octo.server.invocation;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.MessageList;
-import io.netty.handler.codec.ByteToMessageDecoder;
+package org.helios.octo.client;
 
 /**
- * <p>Title: InvocationRequestDecoder</p>
- * <p>Description: Manages the first few bits of decoding an {@link InvocationRequest}</p> 
+ * <p>Title: Response</p>
+ * <p>Description: Response Replaying Decoder Enum</p> 
  * <p>Company: Helios Development Group LLC</p>
  * @author Whitehead (nwhitehead AT heliosdev DOT org)
- * <p><code>org.helios.octo.server.invocation.InvocationRequestDecoder</code></p>
+ * <p><code>org.helios.octo.client.Response</code></p>
  */
 
-public class InvocationRequestDecoder extends ByteToMessageDecoder {
-
-	/**
-	 * Creates a new InvocationRequestDecoder
-	 */
-	public InvocationRequestDecoder() {
-		// TODO Auto-generated constructor stub
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @see io.netty.handler.codec.ByteToMessageDecoder#decode(io.netty.channel.ChannelHandlerContext, io.netty.buffer.ByteBuf, io.netty.channel.MessageList)
-	 */
-	@Override
-	protected void decode(ChannelHandlerContext ctx, ByteBuf in, MessageList<Object> out) throws Exception {
-		
-	}
-
+public enum Response {
+	/** The long identiftying the request for which this response is for */
+	REQUEST_ID,
+	/** The response type byte, 0 for a stream, 1 for an object */
+	RESPONSE_TYPE,
+	/** The stream type if the response type is stream, 0 for std-out, 1 for std-err */
+	STREAM_TYPE,
+	/** Inbound handlers installed */
+	FORWARD;
 }

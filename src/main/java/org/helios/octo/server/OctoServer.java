@@ -40,6 +40,7 @@ import io.netty.handler.codec.serialization.ClassResolver;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -54,6 +55,7 @@ import javax.management.ObjectName;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import org.helios.octo.server.io.SystemStreamRedirector;
+import org.helios.octo.server.streams.StreamOutputAdapter;
 
 /**
  * <p>Title: OctoServer</p>
@@ -96,6 +98,11 @@ public class OctoServer implements OctoServerMBean {
 	
 	/** Logging handler */
 	protected LoggingHandler logging = new LoggingHandler(getClass(), LogLevel.INFO);
+	
+	/** Out handler */
+	protected StreamOutputAdapter outAdapter = new StreamOutputAdapter((byte) 0);
+	/** Out handler */
+	protected StreamOutputAdapter errAdapter = new StreamOutputAdapter((byte) 1);
 	
 	/** Invocation handler */
 	protected final InvocationHandler invocationHandler = new InvocationHandler();
@@ -148,9 +155,16 @@ public class OctoServer implements OctoServerMBean {
 				}).childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(SocketChannel ch) throws Exception {
-						ch.pipeline().addLast("logging", logging);
+						//ch.pipeline().addLast("logging", logging);
 						ch.pipeline().addLast("objectDecoder", new ObjectDecoder(classResolver));
-						ch.pipeline().addLast("objectEncoder", objectEncoder);
+						//ch.pipeline().addLast("objectEncoder", objectEncoder);
+
+						ch.pipeline().addLast("logging", logging);
+						
+						ch.pipeline().addLast("out", outAdapter);
+						ch.pipeline().addLast("stringEncoder", new StringEncoder());
+						//ch.pipeline().addLast("err", errAdapter);
+						
 						ch.pipeline().addLast("invHandler", invocationHandler);
 					}
 				});
